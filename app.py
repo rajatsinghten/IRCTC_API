@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import json
 import datetime
 import time
 import re
@@ -16,10 +15,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 def normalize_date(date_input: str) -> datetime.date:
-    """Accept dd/mm/YYYY or dd-mm-YYYY, return a date object."""
     for fmt in ("%d/%m/%Y", "%d-%m-%Y"):
         try:
             return datetime.datetime.strptime(date_input, fmt).date()
@@ -28,7 +26,6 @@ def normalize_date(date_input: str) -> datetime.date:
     raise ValueError(f"Date {date_input!r} not in dd/mm/YYYY or dd-mm-YYYY format")
 
 def scrape_irctc_trains(from_code, to_code, journey_date_str):
-    """Scrape train data from IRCTC"""
     try:
         journey_date = normalize_date(journey_date_str)
     except ValueError as e:
@@ -56,14 +53,12 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
     try:
         driver.get("https://www.irctc.co.in/nget/train-search")
 
-        # Close initial popup if present
         try:
             ok = short_wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='OK']")))
             ok.click()
         except TimeoutException:
             pass
 
-        # FROM station
         fld_from = short_wait.until(EC.element_to_be_clickable(
             (By.CSS_SELECTOR, "p-autocomplete[formcontrolname='origin'] input.ui-autocomplete-input")))
         fld_from.clear()
@@ -77,7 +72,6 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
         else:
             name_from, code_from = full_from, from_code
 
-        # TO station
         fld_to = wait.until(EC.element_to_be_clickable(
             (By.CSS_SELECTOR, "p-autocomplete[formcontrolname='destination'] input.ui-autocomplete-input")))
         fld_to.clear()
@@ -91,16 +85,17 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
         else:
             name_to, code_to = full_to, to_code
 
-        # DATE
         fld_date = wait.until(EC.element_to_be_clickable(
             (By.CSS_SELECTOR, "span.ui-calendar > input.ui-inputtext")))
         date_str = journey_date.strftime("%d/%m/%Y")
-        fld_date.click(); time.sleep(0.2)
-        fld_date.clear(); time.sleep(0.2)
+        fld_date.click()
+        time.sleep(0.2)
+        fld_date.clear()
+        time.sleep(0.2)
         for c in date_str:
-            fld_date.send_keys(c); time.sleep(0.05)
+            fld_date.send_keys(c)
+            time.sleep(0.05)
         fld_date.send_keys(Keys.TAB)
-        # JS fallback
         driver.execute_script(
             "arguments[0].value = arguments[1];"
             "arguments[0].dispatchEvent(new Event('input',{bubbles:true}));"
@@ -108,13 +103,11 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
             fld_date, date_str)
         time.sleep(0.5)
 
-        # SEARCH
         search_btn = wait.until(EC.element_to_be_clickable(
             (By.CSS_SELECTOR, "button.search_btn.train_Search")))
         search_btn.click()
         time.sleep(1)
 
-        # RESULTS
         wait.until(lambda d: 
             d.find_elements(By.CSS_SELECTOR, "app-train-avl-enq > div.ng-star-inserted") or
             d.find_elements(By.XPATH, "//div[contains(text(),'No trains available')]"))
@@ -124,7 +117,7 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
 
         elems = driver.find_elements(By.CSS_SELECTOR, "app-train-avl-enq > div.ng-star-inserted")
 
-        for idx, el in enumerate(elems, start=1):
+        for el in elems:
             d = {}
             info = el.find_element(By.CSS_SELECTOR, ".train-heading strong").text.strip()
             if "(" in info:
@@ -136,9 +129,8 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
             sched = el.find_element(By.CSS_SELECTOR, ".white-back.no-pad")
             times = sched.find_elements(By.CSS_SELECTOR, ".time")
             d["departure_time"] = times[0].text.replace("|","").strip() if times else "N/A"
-            d["arrival_time"]   = times[1].text.replace("|","").strip() if len(times)>1 else "N/A"
+            d["arrival_time"] = times[1].text.replace("|","").strip() if len(times)>1 else "N/A"
 
-            # Departure date
             try:
                 txt = sched.find_element(By.CSS_SELECTOR, ".hidden-xs").text
                 match = re.search(r'\|\s*(\w+,\s*\d+\s*\w+)', txt)
@@ -146,9 +138,7 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
             except:
                 d["departure_date"] = date_str
 
-            # Arrival date
             try:
-                # If arrival time < departure time => next day
                 dh, dm = map(int, d["departure_time"].split(":"))
                 ah, am = map(int, d["arrival_time"].split(":"))
                 if (ah,am) < (dh,dm):
@@ -160,9 +150,8 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
                 d["arrival_date"] = d["departure_date"]
 
             d["from_station_name"], d["from_station_code"] = name_from.strip(), code_from.strip()
-            d["to_station_name"],   d["to_station_code"]   = name_to.strip(),   code_to.strip()
+            d["to_station_name"], d["to_station_code"] = name_to.strip(), code_to.strip()
 
-            # Operating days
             try:
                 days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
                 elems_day = sched.find_elements(By.CSS_SELECTOR, ".remove-padding.col-xs-4 .Y")
@@ -170,7 +159,6 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
             except:
                 d["operating_days"] = []
 
-            # Classes
             try:
                 cls = el.find_elements(By.CSS_SELECTOR, ".pre-avl strong")
                 d["available_classes"] = [c.text.strip() for c in cls]
@@ -188,7 +176,6 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
 
 @app.route('/', methods=['GET'])
 def home():
-    """API documentation endpoint"""
     return jsonify({
         "message": "IRCTC Train Scraper API",
         "version": "1.0",
@@ -222,61 +209,42 @@ def home():
 
 @app.route('/search', methods=['POST'])
 def search_trains():
-    """Search for trains - POST endpoint"""
     try:
         data = request.get_json()
-        
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
-        
+
         from_code = data.get('from_code', '').strip().upper()
         to_code = data.get('to_code', '').strip().upper()
         journey_date = data.get('journey_date', '').strip()
-        
+
         if not all([from_code, to_code, journey_date]):
-            return jsonify({
-                "error": "Missing required parameters: from_code, to_code, journey_date"
-            }), 400
-        
+            return jsonify({"error": "Missing required parameters: from_code, to_code, journey_date"}), 400
+
         result = scrape_irctc_trains(from_code, to_code, journey_date)
-        
+
         if "error" in result:
             return jsonify(result), 500
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/search-get', methods=['GET'])
 def search_trains_get():
-    """Search for trains - GET endpoint"""
-    try:
-        from_code = request.args.get('from', '').strip().upper()
-        to_code = request.args.get('to', '').strip().upper()
-        journey_date = request.args.get('date', '').strip()
-        
-        if not all([from_code, to_code, journey_date]):
-            return jsonify({
-                "error": "Missing required parameters: from, to, date",
-                "example": "/search-get?from=DEOS&to=LJN&date=27/05/2025"
-            }), 400
-        
-        result = scrape_irctc_trains(from_code, to_code, journey_date)
-        
-        if "error" in result:
-            return jsonify(result), 500
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    from_code = request.args.get('from', '').strip().upper()
+    to_code = request.args.get('to', '').strip().upper()
+    journey_date = request.args.get('date', '').strip()
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat()})
+    if not all([from_code, to_code, journey_date]):
+        return jsonify({"error": "Missing required query parameters: from, to, date"}), 400
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    result = scrape_irctc_trains(from_code, to_code, journey_date)
+    if "error" in result:
+        return jsonify(result), 500
+    return jsonify(result)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
