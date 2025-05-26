@@ -42,11 +42,13 @@ COPY . .
 # Ensure the chromedriver is in PATH and specify Chrome binary location (optional, webdriver_manager might handle it)
 ENV CHROMEDRIVER_PATH="/usr/bin/chromedriver"
 ENV GOOGLE_CHROME_BIN="/usr/bin/google-chrome-stable"
-ENV PATH="/usr/bin:${PATH}" # Add /usr/bin to PATH where Chrome is
+ENV PATH="/usr/bin:${PATH}" 
+# Add /usr/bin to PATH where Chrome is
 
 # Expose the port your Flask app runs on
 ENV PORT 5000
 EXPOSE $PORT
 
 # Command to run your Flask application
-CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "app:app"] # Use gunicorn for production
+CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "app:app"] 
+# Use gunicorn for production
