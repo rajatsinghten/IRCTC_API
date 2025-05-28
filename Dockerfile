@@ -1,28 +1,34 @@
 FROM python:3.9-slim-buster
 
+# Install Chromium and dependencies
 RUN apt-get update && apt-get install -y \
-    gnupg \
     wget \
+    gnupg \
     unzip \
     fonts-liberation \
-    libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
     libnspr4 \
     libnss3 \
-    lsb-release \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxrandr2 \
     xdg-utils \
-    libxss1 \
-    libgbm1 \
     libu2f-udev \
     libvulkan1 \
-    libcurl4 \
-    libdbus-glib-1-2 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list \
-    && apt-get update && apt-get install -y google-chrome-stable \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -33,10 +39,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV CHROMEDRIVER_PATH="/usr/bin/chromedriver"
-ENV GOOGLE_CHROME_BIN="/usr/bin/google-chrome-stable"
+ENV GOOGLE_CHROME_BIN="/usr/bin/chromium"
 ENV PATH="/usr/bin:${PATH}"
-ENV PORT=5000
+ENV PORT=8080
 
 EXPOSE ${PORT}
 
-CMD sh -c "exec gunicorn -b 0.0.0.0:${PORT:-5000} app:app"
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "300", "--workers", "1", "--threads", "1", "--worker-class", "sync", "--max-requests", "1", "--max-requests-jitter", "0", "app:app"]
