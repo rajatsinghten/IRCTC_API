@@ -147,7 +147,7 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
             try:
                 d = {}
                 info = el.find_element(By.CSS_SELECTOR, ".train-heading strong").text.strip()
-                if "(" in info:
+                if "(" in info and info.endswith(")"):
                     tn, num = info.split("(",1)
                     d["train_name"], d["train_number"] = tn.strip(), num.rstrip(")").strip()
                 else:
@@ -162,7 +162,7 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
                     txt = sched.find_element(By.CSS_SELECTOR, ".hidden-xs").text
                     match = re.search(r'\|\s*(\w+,\s*\d+\s*\w+)', txt)
                     d["departure_date"] = match.group(1).split(",",1)[1].strip() if match else date_str
-                except:
+                except Exception:
                     d["departure_date"] = date_str
 
                 try:
@@ -173,10 +173,10 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
                     else:
                         dt = journey_date
                     d["arrival_date"] = dt.strftime("%d %b")
-                except:
+                except Exception:
                     d["arrival_date"] = d["departure_date"]
 
-                d["from_station_name"], d["from_station_code"] = name_from.strip(), code_from.strip()
+                d["from_station_name"], d["from_station_code"] = full_from.strip(), code_from.strip()
                 d["to_station_name"], d["to_station_code"] = name_to.strip(), code_to.strip()
 
                 try:
@@ -189,7 +189,7 @@ def scrape_irctc_trains(from_code, to_code, journey_date_str):
                 try:
                     cls = el.find_elements(By.CSS_SELECTOR, ".pre-avl strong")
                     d["available_classes"] = [c.text.strip() for c in cls]
-                except:
+                except Exception:
                     d["available_classes"] = []
 
                 trains.append(d)
