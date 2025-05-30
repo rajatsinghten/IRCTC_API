@@ -1,4 +1,4 @@
----
+
 # ConfirmTKT Train Availability API
 
 This API provides train availability and details by querying the ConfirmTKT train data API.
@@ -7,7 +7,7 @@ This API provides train availability and details by querying the ConfirmTKT trai
 
 `https://traininfo-diik.onrender.com`
 
----
+
 
 ## Endpoints
 
@@ -116,6 +116,3 @@ The response JSON contains train data, including a list of trains and their avai
 * If parameters are missing or invalid, the API responds with an error and HTTP status code **400**.
 * The API forwards any upstream errors with appropriate HTTP status codes.
 
----
-
-Would you like me to add examples in Python or JavaScript to this README, or perhaps generate it as a `.md` file for you?
