@@ -1,10 +1,11 @@
 services:
   - type: web
-    name: irctc-train-scraper-api
+    name: confirmtkt-api
     env: python
+    region: oregon   # or your preferred region
+    branch: main
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
-    plan: free
+    startCommand: gunicorn app:app --bind 0.0.0.0:8080 --workers 2
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      - key: FLASK_ENV
+        value: production
