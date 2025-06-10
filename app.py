@@ -100,6 +100,7 @@ def search_trains():
                 "trainName": t.get("trainName"),
                 "departureTime": t.get("departureTime"),
                 "arrivalTime": t.get("arrivalTime"),
+                "duration": t.get("duration"),
                 "distance": t.get("distance"),
                 "availability": {}
             }
